@@ -52,7 +52,7 @@ Each MCP-consuming stage gets its own `McpToolset` (own stdio subprocess of `app
 | Deployability | `Dockerfile` — Cloud Run-compatible container |
 | Agent skills (CLI) | `app/cli.py` — `python -m app.cli --topic "..."` |
 
-Gemini is the default model. If a session hits a Gemini API error (quota, access, retired model), the CLI automatically retries the whole session once on Groq's free API (`llama-3.3-70b-versatile`, via LiteLLM) — no manual intervention needed. Set `GROQ_API_KEY` in `.env` to enable this; it's optional if Gemini is working.
+Gemini is the default model. If a session hits a Gemini API error (quota, access, retired model), the CLI automatically retries the whole session once on Groq's free API (`meta-llama/llama-4-scout-17b-16e-instruct`, via LiteLLM) — no manual intervention needed. If Groq itself is rate-limited, the CLI waits and retries (up to 2 times) rather than failing outright, and adds a short delay between pipeline stages to stay under Groq's free-tier per-minute token cap. Set `GROQ_API_KEY` in `.env` to enable this; it's optional if Gemini is working.
 
 ## Setup
 
@@ -64,6 +64,8 @@ pip install -r requirements.txt
 
 cp .env.example .env
 # edit .env and set GOOGLE_API_KEY to your Gemini API key
+# (optional) also set GROQ_API_KEY — free key at console.groq.com — as a
+# fallback if Gemini errors
 ```
 
 ## Run
@@ -86,7 +88,7 @@ Covers the sanitizer, rate limiter, and progress tracker (the deterministic, non
 
 ```bash
 docker build -t study-buddy-agent .
-docker run --rm -e GOOGLE_API_KEY=your-key study-buddy-agent --topic "Photosynthesis"
+docker run --rm -e GOOGLE_API_KEY=your-key -e GROQ_API_KEY=your-fallback-key study-buddy-agent --topic "Photosynthesis"
 ```
 
 For Cloud Run: build and push the image, then `gcloud run deploy --image <image> --set-env-vars GOOGLE_API_KEY=<key>` (deployed as a job/one-shot invocation, since this is a CLI tool rather than an HTTP server).
@@ -94,7 +96,7 @@ For Cloud Run: build and push the image, then `gcloud run deploy --image <image>
 ## Security notes
 
 - No personally identifiable information is collected or stored anywhere.
-- `GOOGLE_API_KEY` is read only from `.env` (gitignored) — never logged, never committed. `.env.example` contains placeholders only.
+- `GOOGLE_API_KEY` and `GROQ_API_KEY` are read only from `.env` (gitignored) — never logged, never committed. `.env.example` contains placeholders only.
 - All MCP tool inputs (and the progress tracker's step labels) are sanitized — length-capped, control characters stripped, internal whitespace normalized — before use or before being printed to the terminal.
 - MCP tool calls are rate-limited per tool, per process run (each `python -m app.cli` invocation is a fresh process with a fresh limiter) to prevent runaway/looping tool use. A rate-limit hit is surfaced distinctly from a generic fetch failure.
 - If a content fetch fails or is rate-limited, the pipeline degrades gracefully (falls back to the model's own knowledge) instead of crashing.
