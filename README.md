@@ -10,7 +10,7 @@ Underserved students often can't access personalized, one-on-one tutoring. Given
 
 A 4-stage multi-agent tutor pipeline, run from the command line:
 
-1. **Planner** — breaks the topic into 3-5 ordered learning steps.
+1. **Planner** — breaks the topic into 3 ordered learning steps (kept small so the pipeline's total tool-call volume fits comfortably under a free-tier fallback provider's rate limits).
 2. **Tutor** — explains each step in plain language, grounded in real facts pulled live from Wikipedia via an MCP tool.
 3. **Quiz-gen** — writes one multiple-choice comprehension question per step, using related facts pulled via a second MCP tool.
 4. **Progress-tracker** — records mastery per step (via a deterministic Python tool, not LLM guesswork) and reports a final summary.
@@ -51,6 +51,8 @@ Each MCP-consuming stage gets its own `McpToolset` (own stdio subprocess of `app
 | Security features | `app/security.py` — input sanitization, per-tool rate limiting, secret-free error handling, no PII stored |
 | Deployability | `Dockerfile` — Cloud Run-compatible container |
 | Agent skills (CLI) | `app/cli.py` — `python -m app.cli --topic "..."` |
+
+Gemini is the default model. If a session hits a Gemini API error (quota, access, retired model), the CLI automatically retries the whole session once on Groq's free API (`llama-3.3-70b-versatile`, via LiteLLM) — no manual intervention needed. Set `GROQ_API_KEY` in `.env` to enable this; it's optional if Gemini is working.
 
 ## Setup
 

@@ -7,6 +7,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+# Fallback provider used only if Gemini errors (quota/access/model-not-found).
+# Groq: free tier, no credit card. LiteLLM-style "groq/<model>" string,
+# consumed by google.adk.models.lite_llm.LiteLlm.
+FALLBACK_MODEL = os.environ.get(
+    "FALLBACK_MODEL", "groq/meta-llama/llama-4-scout-17b-16e-instruct"
+)
 
 
 def _int_env(name: str, default: str) -> int:
@@ -41,5 +47,21 @@ def get_api_key() -> str:
         raise RuntimeError(
             "GOOGLE_API_KEY is not set. Copy .env.example to .env and fill in "
             "your Gemini API key before running the app."
+        )
+    return api_key
+
+
+def get_fallback_api_key() -> str:
+    """Returns the Groq API key, or raises a clear, secret-free error.
+
+    Only checked right before a fallback attempt — Gemini is the default
+    path and most runs never touch this.
+    """
+    api_key = os.environ.get("GROQ_API_KEY", "")
+    if not api_key.strip():
+        raise RuntimeError(
+            "Gemini failed and GROQ_API_KEY is not set, so the fallback "
+            "model can't run either. Add GROQ_API_KEY to .env "
+            "(free key at console.groq.com)."
         )
     return api_key
