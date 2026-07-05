@@ -1,0 +1,5 @@
+google-adk>=2.3.0,<3
+mcp>=1.28.1,<2
+requests>=2.32,<3
+python-dotenv>=1.0,<2
+pytest>=7.0,<9
